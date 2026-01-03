@@ -1,0 +1,1083 @@
+{
+  "name": "hci_flow1",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "119574ab-7a5f-4ce5-b3e1-b7140a555965",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bKssTlwRpduDxZHG",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "500c14d7-6cdf-4393-a8ab-5d7c684d12b2",
+              "name": "email_body",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "1d338895-af0f-425c-b61e-82044c05c88d",
+              "name": "thread_id",
+              "value": "={{ $json.threadId }}",
+              "type": "string"
+            },
+            {
+              "id": "3e51eab3-d4cd-4c40-83c3-1e4a2bb8a0c1",
+              "name": "customer_email",
+              "value": "={{ $json.headers.from.extractEmail() }}",
+              "type": "string"
+            },
+            {
+              "id": "1f2c8cdc-3a0b-4b40-b13e-abbed1980a30",
+              "name": "email_subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "d5fb18a8-c50e-40fc-a78e-bca78a49057b",
+      "name": "selecting parameters"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.0-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.0-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=THE INCOMING EMAIL CONTENT HERE FOR ANALYSIS :  {{ $json.email_body }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {
+          "systemMessage": "=You are an intent filter for incoming customer emails to TechForge Solutions.\n\nAnalyze the full meaning of the email, not individual words.\nDecide whether the email is meaningful enough to be handled by customer support or the auto-reply system.\n\nSet \"customerSupport\" to 1 if the email appears to be:\n- A real question, request, complaint, or feedback\n- Related to web services, pricing, support, issues, or business inquiries\n- Vague but possibly serious or written by a real person\n- Emotional, informal, or poorly written but still meaningful\n\nSet \"customerSupport\" to 0 ONLY if the email is clearly:\n- Pure nonsense or random text\n- Obvious prank, mockery, or time-wasting with no intent\n- Spam, marketing offers, or unrelated promotions\n- Empty or contains no understandable message\n\nWhen in doubt, choose 1.\n\nTHE INCOMING EMAIL CONTENT HERE FOR ANALYSIS:\n{{ $json.email_body }}\n\nOutput:\nProvide the result in JSON format with a single field named \"customerSupport\" set to 1 or 0.\nYour response must ONLY contain valid JSON with no extra text or fields.\n\nExample Output:\n{\n  \"customerSupport\": 0\n}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -288
+      ],
+      "id": "60a97759-35c7-4e38-82e1-04a1a1ae7a5b",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gq0pJWYrTMPQhC2Y",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  // Extract raw text\n  let text = item.json.content.parts[0].text;\n\n  // Remove code fences if present\n  // Matches ```json ... ``` or ``` ... ```\n  text = text.replace(/```(json)?\\n?/g, '').replace(/```/g, '').trim();\n\n  let customerSupportFlag = 0;\n\n  try {\n    const parsed = JSON.parse(text);\n\n    // Accept boolean true or number 1\n    if (parsed.customerSupport === true || parsed.customerSupport === 1) {\n      customerSupportFlag = 1;\n    } else {\n      customerSupportFlag = 0;\n    }\n\n  } catch (error) {\n    customerSupportFlag = 0;\n  }\n\n  // Save the result\n  item.json.customerSupport = customerSupportFlag;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -160
+      ],
+      "id": "169249b0-ef18-44ad-864e-be03ba1b4553",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ef197a4f-2d96-4c62-8cc9-6a5cdf3242e2",
+              "leftValue": "={{ $json.output.customerSupport }}",
+              "rightValue": "1",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1392,
+        0
+      ],
+      "id": "71aa333a-d8ef-4890-8129-5e591f5dc36b",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=the email from client is :  {{ $('selecting parameters').item.json.email_body }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=# System Role\nYou are a professional customer support representative for TechForge Solutions.\nYour responsibility is to read incoming customer emails, retrieve accurate information from the Pinecone vector store **customer_data_store**, and write a clear, polite, and business-appropriate email response.\n\n# Tools Available\n1. **customer_data_store** — Contains TechForge Solutions policies, services, FAQs, and official support guidelines.\n\n# Task Instructions\n1. Carefully read the incoming customer email.\n2. Use **customer_data_store** to find the most relevant and accurate information.\n3. Write a complete, customer-ready email reply as a real business would send.\n4. Do NOT invent policies, prices, timelines, or commitments.\n5. If information is missing or unclear, politely ask for clarification instead of guessing.\n6. Keep responses concise, professional, and calm — even if the customer is upset.\n\n# Email Writing Guidelines\n- Address the customer professionally (e.g., “Hello,” or “Dear”).\n- Acknowledge the customer’s concern or request.\n- Clearly answer the question or explain next steps.\n- If the issue requires action or review, state what will happen next and any expected timeframe (only if defined in the data).\n- Do NOT use technical jargon unless the customer explicitly used it.\n- Avoid emojis, slang, or casual language.\n- End every email with this exact sign-off:\n\nfurqan  \nCustomer Support  \nTechForge Solutions\n\n# Input\nThe email from the client is:\n{{ $('selecting parameters').item.json.email_body }}\n\n# Output Format (STRICT)\nReturn your response in the following structure only:\n# Plain Text Requirement (STRICT)\n- The email must be written in plain text only.\n- Do NOT use markdown formatting of any kind.\n- Do NOT use:\n  - Bullet points\n  - Numbered lists\n  - Bold or italic text\n  - Headings\n- Write in natural paragraph form, as a real human support agent would type in an email client.\n\n\n1. **Email Response:**  \nA polished, professional email ready to be sent to the customer.\n\n2. **Summary:**  \nA brief internal summary describing:\n- What the customer contacted us about\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        2032,
+        -208
+      ],
+      "id": "07bf91bf-75e5-406b-885f-2f3be00b06fb",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "This vector store contains the official knowledge base of TechForge Solutions, including company policies, service offerings, pricing rules, support procedures, operational guidelines, and approved customer response standards.\n\nThe AI agent must query this store to retrieve accurate, up-to-date, and policy-compliant information when responding to customer emails. All replies must strictly follow the information found in this store and must not assume, invent, or override company rules, pricing, timelines, or commitments.\n\nIf relevant information is missing or unclear, the agent should request clarification from the customer rather than guessing.",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "hcitwo",
+          "mode": "list",
+          "cachedResultName": "hcitwo"
+        },
+        "options": {
+          "pineconeNamespace": "hcitwo"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        2016,
+        160
+      ],
+      "id": "0dc7bbd0-d8ee-455f-91d0-ee638fd0ae87",
+      "name": "customer_data_store",
+      "credentials": {
+        "pineconeApi": {
+          "id": "2BDkmToZiF2Os7Xh",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2320,
+        448
+      ],
+      "id": "fdcb2ef6-6d09-45c2-a4b6-da94dc04b78a",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "acb71d8d-c1c8-4f9e-97c5-b56a179d1c4e",
+              "name": "llm_reply",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "3a62b0bc-61bb-49d6-a8d9-2264e80d9f23",
+              "name": "thread_ID",
+              "value": "={{ $('selecting parameters').item.json.thread_id }}",
+              "type": "string"
+            },
+            {
+              "id": "3b6bddac-66aa-4e0b-b14c-60b87fe86fb4",
+              "name": "orignal_email",
+              "value": "={{ $('orignal_email').item.json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "4587c6ce-2278-4484-8db5-d9b2b9bd906c",
+              "name": "status",
+              "value": "pending",
+              "type": "string"
+            },
+            {
+              "id": "2157f60d-00f8-4e2f-bae5-7816201fad4d",
+              "name": "createdAT",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            },
+            {
+              "id": "23696dfd-8355-474c-b96d-b792070a5301",
+              "name": "client_email",
+              "value": "={{ $('selecting parameters').item.json.customer_email }}",
+              "type": "string"
+            },
+            {
+              "id": "86fe5ba1-fae3-4659-b0eb-3096fb737565",
+              "name": "unique_id",
+              "value": "={{ $('Gmail Trigger').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "8a146acb-6c41-4a76-b18d-e6a28bb31c38",
+              "name": "regeneration_count",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "cca792d6-99bc-4af3-955c-faab14bd5910",
+              "name": "summaryOfOrignal_email",
+              "value": "={{ $('Edit Fields1').item.json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "415f57ea-e21b-4ab8-be79-f8551e85b3e1",
+              "name": "email_subject",
+              "value": "={{ $('selecting parameters').item.json.email_subject }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4240,
+        -208
+      ],
+      "id": "b00e9243-2c95-4e74-9974-8176f3bbdff4",
+      "name": "set_email_ans"
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "furqan_hci_collection",
+        "fields": "=llm_reply , thread_ID ,email_subject , orignal_email , status , createdAT , client_email , unique_id , regeneration_count , summaryOfOrignal_email",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        4560,
+        -240
+      ],
+      "id": "57b473a9-6ecd-41da-8829-47a6ed108ef2",
+      "name": "Insert documents",
+      "alwaysOutputData": false,
+      "credentials": {
+        "mongoDb": {
+          "id": "0aZCT1HmedYBwg8s",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"output\": \"string\",\n  \"summary\": \"string\"\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2304,
+        96
+      ],
+      "id": "a06406a3-7268-4c6e-bd37-307ccd3b4182",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "collection": "customer_history",
+        "options": {},
+        "query": "={\n  \"email\": \"{{ $('selecting parameters').item.json.customer_email.trim() }}\"\n}\n"
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        2080,
+        -384
+      ],
+      "id": "aca18b66-a27e-457e-bb9c-055ceb919fc0",
+      "name": "Find documents",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "0aZCT1HmedYBwg8s",
+          "name": "MongoDB account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here is the data for the current request:\n\n### 1. Current Incoming Email\n\"{{ $('selecting parameters').item.json.email_body }}\"\n\n### 2. Draft Reply (from previous AI Node)\n\"{{ $json.output }}\"\n\n### 3. Customer Conversation History\n\"{{ $json.customer_history }}\"\n\n",
+        "options": {
+          "systemMessage": "=You are a Personalization Assistant. You will receive a \"Draft Reply\" (generated by a previous AI using RAG) which contains the correct solution, and the \"Customer's Past History\".\n\nYour task is to rewrite the Draft Reply to specifically fit this customer. \n1. Analyze the Past History to determine the customer's **knowledge level**, **preferred tone**, and **communication style**.\n2. Tailor the language of the reply to match them (e.g., if they are technical, use technical terms; if they are casual, be casual).\n3. Ensure the core factual solution remains correct.\n4. Always sign off as: \"Kelly, Customer Support ABC Corp.\"\n\n# Plain Text Requirement (STRICT)\n- The email must be written in plain text only.\n- Do NOT use markdown formatting of any kind.\n- Do NOT use:\n  - Bullet points\n  - Numbered lists\n  - Bold or italic text\n  - Headings\n- Write in natural paragraph form, as a real human support agent would type in an email client.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        3872,
+        -208
+      ],
+      "id": "8d724c60-f33f-4129-becb-767a70e27ae7",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        0
+      ],
+      "id": "8bf10442-03da-401a-9fb7-36a0178df20c",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nif (!items?.length || !items[0]?.json) {\n  return [{\n    json: {\n      customer_history: \"He is a new customer.\"\n    }\n  }];\n}\n\nconst doc = items[0].json;\n\nif (!Array.isArray(doc.conversations) || doc.conversations.length === 0) {\n  return [{\n    json: {\n      customer_history: \"He is a new customer.\"\n    }\n  }];\n}\n\nconst finalText = doc.conversations\n  .filter(c => c && (c.original_email || c.llm_reply))\n  .map(c => {\n    const message = c.original_email ?? \"\";\n    const reply = c.llm_reply ?? \"\";\n    return `Customer said: ${message}\\nWe replied: ${reply}`;\n  })\n  .join(\"\\n\\n\");\n\nreturn [{\n  json: {\n    customer_history: finalText || \"He is a new customer.\"\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2384,
+        -384
+      ],
+      "id": "f3f691cf-339d-4b8c-8c21-c40369c8a297",
+      "name": "customer history chat",
+      "executeOnce": false,
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b8d489b8-aca2-4406-b935-0880c03df9c0",
+              "name": "customer_history",
+              "value": "={{ $json.customer_history }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2704,
+        -384
+      ],
+      "id": "ad68995e-42f2-42dd-808c-892a6a7b47e7",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8dd63689-6fad-4aac-a37a-fa41ac4dc8a9",
+              "name": "output",
+              "value": "={{ $json.output.output }}",
+              "type": "string"
+            },
+            {
+              "id": "112a7889-b4cc-4c8d-a3f1-c28ec001250e",
+              "name": "summary",
+              "value": "={{ $json.output.summary }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2544,
+        -208
+      ],
+      "id": "2a61e4ad-058c-4d77-93b1-2e08bc1e22a1",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3392,
+        -208
+      ],
+      "id": "0c0ee636-ac5c-4aab-bd50-ccaa07cb89da",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        256
+      ],
+      "id": "6aaed0f4-8b53-4d1a-8d63-efe38c606bc6",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1888,
+        0
+      ],
+      "id": "448f2772-11cf-40ab-8398-cdad7c1b6d5d",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "Bb0zytNnFpxZM8st",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        3840,
+        96
+      ],
+      "id": "e53cde0b-c7a2-4402-8aac-aee47cd98773",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "Bb0zytNnFpxZM8st",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-32b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        912,
+        352
+      ],
+      "id": "37aef3e6-9452-4f74-b0bb-5be9202e5659",
+      "name": "Groq Chat Model2",
+      "credentials": {
+        "groqApi": {
+          "id": "Bb0zytNnFpxZM8st",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=THE INCOMING EMAIL CONTENT HERE FOR ANALYSIS : {{ $json.output }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are an intent filter for incoming customer emails to TechForge Solutions.\n\nAnalyze the full meaning and intent of the email, not individual words.\nDetermine whether the email is meaningful enough to be handled by human customer support or should be handled by the auto-reply system.\n\nYou may use the available tools to assist your decision, but do NOT be overly strict.\nIf the email loosely aligns with TechForge Solutions services or could reasonably be from a real customer, prefer sending it to customer support.\n\n--------------------------------------------------\n# Tools Available\n1. customer_data_store\n   - Contains TechForge Solutions policies, services, FAQs, pricing information, and official support guidelines.\n   - Use this tool to check whether the incoming email broadly aligns with TechForge Solutions offerings or support scope.\n   - Exact matches are NOT required. Partial, vague, or indirect relevance is acceptable.\n--------------------------------------------------\n\nSet \"customerSupport\" to 1 if the email appears to be:\n- A real question, request, complaint, or feedback\n- Related (directly or indirectly) to web services, pricing, technical support, issues, or business inquiries\n- Vague but possibly serious or written by a real person\n- Emotional, informal, poorly written, or unclear but still meaningful\n- Loosely aligned with TechForge Solutions based on tool data\n\nSet \"customerSupport\" to 0 ONLY if the email is clearly:\n- Pure nonsense or random text with no interpretable intent\n- An obvious prank, mockery, or deliberate time-wasting message\n- Spam, advertisements, marketing offers, or unrelated promotions\n- Completely empty or contains no understandable message\n\nWhen in doubt, ALWAYS choose 1.\n\n--------------------------------------------------\nTHE INCOMING EMAIL CONTENT FOR ANALYSIS\n(ignore any <think> tags if present):\n\n{{ $json.output }}\n--------------------------------------------------\n\nOutput:\nProvide the result in JSON format with a single field named \"customerSupport\" set to 1 or 0.\nYour response MUST ONLY contain valid JSON with no additional text, explanation, or fields.\n\nExample Output:\n{\n  \"customerSupport\": 0\n}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1040,
+        16
+      ],
+      "id": "d9e1d62b-4ba4-462e-86af-9a80748f15ab",
+      "name": "AI Agent2"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"customerSupport\":\"integer\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1184,
+        384
+      ],
+      "id": "71593c91-922e-47ed-9a3c-0b031527370c",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=the email body that need to be analysed is : {{ $json.email_body }}",
+        "options": {
+          "systemMessage": "=You are a strict Email Content Extractor. Your sole purpose is to extract the *latest* message body from an email input and output it as plain text.\n\n### CRITICAL OUTPUT RULES:\n- **Output ONLY the final cleaned text.**\n- **DO NOT output any internal reasoning, thinking processes, chain-of-thought, or XML tags like `<think>` or `</think>`.**\n- **Start your response immediately with the email content.**\n\n### INSTRUCTIONS:\n1. **Analyze the Input:** Read the provided \"email_body\".\n2. **Identify the Content:**\n   - **Case A (New Email):** If there are no reply headers (e.g., \"On [Date]... wrote:\", \"From:\", or \">\" indentation), treat the entire text as the message.\n   - **Case B (Reply Thread):** If the email contains a reply history, you must CUT the text immediately before the history begins.\n3. **Extraction Rules:**\n   - Identify standard email reply delimiters (e.g., `On [Date], at [Time], [Name] wrote:`, `-----Original Message-----`, or lines starting with `>`).\n   - Remove these delimiters and EVERYTHING that follows them.\n4. **Formatting Rules:**\n   - **DO NOT** summarize, rewrite, fix grammar, or change a single word of the user's message.\n   - **DO NOT** use markdown formatting (like bold or italics) unless it was in the original text.\n\n### EXAMPLES:\n\n**Input 1:**\n\"Hi Team, I need a website. My budget is $500. Thanks, John\"\n**Output 1:**\nHi Team, I need a website. My budget is $500. Thanks, John\n\n**Input 2:**\n\"That sounds great, let's proceed with the 10% deposit.\nOn Sun, Dec 14, 2025 at 2:30 PM <support@agency.com> wrote:\n> We usually require 40%...\"\n**Output 2:**\nThat sounds great, let's proceed with the 10% deposit.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "dd389374-acba-43cd-af67-329066e8fa94",
+      "name": "AI Agent3"
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-32b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        416,
+        272
+      ],
+      "id": "fc5113c2-7e12-4ea1-ac28-978ee1c02971",
+      "name": "Groq Chat Model3",
+      "credentials": {
+        "groqApi": {
+          "id": "Bb0zytNnFpxZM8st",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over all input items\nfor (const item of $input.all()) {\n  // get the raw text from the \"output\" field\n  const rawText = item.json.output;\n\n  if (rawText) {\n    // Regex explanation:\n    // <think>   : matches the opening tag\n    // [\\s\\S]*?  : matches any character (including newlines) non-greedily\n    // <\\/think> : matches the closing tag\n    // /gi       : global match, case-insensitive\n    const cleanText = rawText.replace(/<think>[\\s\\S]*?<\\/think>/gi, \"\").trim();\n\n    // Update the 'output' field with the clean text\n    item.json.output = cleanText;\n  }\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "043f314c-e89c-4313-b39d-68af70c84341",
+      "name": "orignal_email"
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('selecting parameters').item.json.thread_id }}",
+        "emailType": "text",
+        "message": "this is a professional business email - please refrain from such messags",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1600,
+        96
+      ],
+      "id": "499601a8-fc23-475f-895f-8cf8a095a6a8",
+      "name": "Reply to a message",
+      "webhookId": "436d5f06-23bc-48c9-a8af-3395ce4d5ee9",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bKssTlwRpduDxZHG",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "This vector store contains the official knowledge base of TechForge Solutions, including company policies, service offerings, pricing rules, support procedures, operational guidelines, and approved customer response standards.\n\nThe AI agent must query this store to retrieve accurate, up-to-date, and policy-compliant information when responding to customer emails. All replies must strictly follow the information found in this store and must not assume, invent, or override company rules, pricing, timelines, or commitments.\n\nIf relevant information is missing or unclear, the agent should request clarification from the customer rather than guessing.",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "hcitwo",
+          "mode": "list",
+          "cachedResultName": "hcitwo"
+        },
+        "options": {
+          "pineconeNamespace": "hcitwo"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        944,
+        528
+      ],
+      "id": "9dda3588-cb9a-4112-b3ef-9289ab2f69de",
+      "name": "customer_data_store1",
+      "credentials": {
+        "pineconeApi": {
+          "id": "2BDkmToZiF2Os7Xh",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        816
+      ],
+      "id": "0a53433c-de0a-4426-bd8d-ef65f9f428ca",
+      "name": "Embeddings Google Gemini1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Gmail Trigger": [
+      {
+        "json": {
+          "id": "19b169969813e8b7",
+          "threadId": "19b169969813e8b7",
+          "labelIds": [
+            "UNREAD",
+            "IMPORTANT",
+            "CATEGORY_PERSONAL",
+            "INBOX"
+          ],
+          "sizeEstimate": 7194,
+          "headers": {
+            "delivered-to": "Delivered-To: furqanahmadbasra65@gmail.com",
+            "received": "Received: from mail-sor-f41.google.com (mail-sor-f41.google.com. [209.85.220.41])\r\n        by mx.google.com with SMTPS id 98e67ed59e1d1-34a8f3a600fsor3264791a91.4.2025.12.12.23.25.11\r\n        for <furqanahmadbasra65@gmail.com>\r\n        (Google Transport Security);\r\n        Fri, 12 Dec 2025 23:25:11 -0800 (PST)",
+            "x-received": "X-Received: by 2002:a17:90b:3fc6:b0:33f:eca0:47c6 with SMTP id\r\n 98e67ed59e1d1-34abd77efdcmr3455650a91.30.1765610710371; Fri, 12 Dec 2025\r\n 23:25:10 -0800 (PST)",
+            "arc-seal": "ARC-Seal: i=1; a=rsa-sha256; t=1765610711; cv=none;\r\n        d=google.com; s=arc-20240605;\r\n        b=IF80ZwSss+vaGyRJcZqpvV1GqF+hIlj/amV7ohqPgdIafaXz3iiH7GQQuE/eklvlMA\r\n         XRUvXm4lL5OfoJv2jR0LnVwRsRSXpBo3PEpldqRxgeOiOsC3hvGjJDN16LXauTGAEPOS\r\n         Eps2DP2Rzv+tBiZd1GG4WoAJbNiGhVl8LMOuW8poeRezEBiW9WUzU8JmmrRx83Ls4U1b\r\n         jnJGUtFnO6FyIQYqc3oPKPBtfxigr2KyvpJ+WwKWp6/NzWe8WfsUc6PfHZC+QIUkgMLN\r\n         Vc/zQsIcdmrMjxr5X3Bg3VCZIaiAt5hi7q7nmrhoPOD18VZtQ73iXkpQdUqPt/+Rvogl\r\n         WKSA==",
+            "arc-message-signature": "ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;\r\n        h=to:subject:message-id:date:from:mime-version:dkim-signature;\r\n        bh=h3lYConYnQhnZUnfj1XZ9EDe6jmzGGRqhsp2EUBcYD8=;\r\n        fh=Cv2gNYC/IlTnypdtTCs2gBQ3DD6IG+F3xq1MjPrJ4sU=;\r\n        b=cV4B7fJbg5y6Ksd6L9f8azwZJpvhE2SGSDhHa+0kIKhUI01FhSl6FHMb9+s+2/KVaa\r\n         cKVTwmZFdp8Om2L49YWPoMuy/gQdQm7t3+aCROP6vBhFDWXnuR8rxR9hQ7vsXc9wD0el\r\n         WnMFbHHf+Z+Q9Ryve6bKODue5FmcLoZ6/AQkDaxP1nTbI4QnoY1Q7bwyhpMArvyFd6uS\r\n         ej1xEebg6Z/oeP96g2yDIbviGh8uYAdylsZzYC5er8ohZKizJAAkVshPiJiCJbKAp77G\r\n         vxqLNa1BB8gY0QQUsWXpH+ZTjsf0pSkv1NSKKIme6bcGKh1vMfnB9Q/gic+Lsj1gJi/L\r\n         eUYg==;\r\n        dara=google.com",
+            "arc-authentication-results": "ARC-Authentication-Results: i=1; mx.google.com;\r\n       dkim=pass header.i=@gmail.com header.s=20230601 header.b=aLHaN14x;\r\n       spf=pass (google.com: domain of furqanacc5785@gmail.com designates 209.85.220.41 as permitted sender) smtp.mailfrom=furqanacc5785@gmail.com;\r\n       dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=gmail.com;\r\n       dara=pass header.i=@gmail.com",
+            "return-path": "Return-Path: <furqanacc5785@gmail.com>",
+            "received-spf": "Received-SPF: pass (google.com: domain of furqanacc5785@gmail.com designates 209.85.220.41 as permitted sender) client-ip=209.85.220.41;",
+            "authentication-results": "Authentication-Results: mx.google.com;\r\n       dkim=pass header.i=@gmail.com header.s=20230601 header.b=aLHaN14x;\r\n       spf=pass (google.com: domain of furqanacc5785@gmail.com designates 209.85.220.41 as permitted sender) smtp.mailfrom=furqanacc5785@gmail.com;\r\n       dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=gmail.com;\r\n       dara=pass header.i=@gmail.com",
+            "dkim-signature": "DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=gmail.com; s=20230601; t=1765610710; x=1766215510; dara=google.com;\r\n        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject\r\n         :date:message-id:reply-to;\r\n        bh=h3lYConYnQhnZUnfj1XZ9EDe6jmzGGRqhsp2EUBcYD8=;\r\n        b=aLHaN14xx6+pcx236YZNvi45fRG55vDPAvskVXl2mbQ5R3hZtJtcYQ6B7U6RlBZZrc\r\n         UDTJM5wFytnqJiyQM5vCHFc6HoGg7Cvz11HlpbwNZoskOip2S6qURX/f6qvNI2zGf21w\r\n         FGq9U8ilaK0ch8pKi1NhiIlDXzAgmjYArb6fInSp127OsRGlDoY7RT2Z4dpOrcR00uNX\r\n         peQotox3kaLGvuBFZXx48+R2c06ZHE8jxuWWMAPFEXHUuIvNzDcN5Zg5QSNuEn7NQLgI\r\n         0UkDClyA57+rpaKQxUvuXoydsMjTYPf2t4uz5af+gyVceIqocr0n8FifpaOZr1Efw+lQ\r\n         U46w==",
+            "x-google-dkim-signature": "X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=1e100.net; s=20230601; t=1765610710; x=1766215510;\r\n        h=to:subject:message-id:date:from:mime-version:x-gm-gg\r\n         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;\r\n        bh=h3lYConYnQhnZUnfj1XZ9EDe6jmzGGRqhsp2EUBcYD8=;\r\n        b=M74f2vJoBXqfX1NH3eZh0AOsoLoRsXsAnq54pPhlgr3Ci5NT3ulAyXWsMheuJUk2gx\r\n         U1oOCYnCnT0t9T5O3RYaCgN/cLnoL4BRAMOgVBHfbZ6GionX6qbW5qCUiJLd08TlrVOh\r\n         +Nv0u8uaR+8vXlX/N7HOcj5cohCvMcI9KPGSDginhhd+Bm9mqWsYcE6yeBiodel2sfFJ\r\n         NUslkQGGnXZ1NMerA+QjATr0iG1k2cyqFWwz2qYFn4TK1crPpu+UBHv0BSXmxGs7UvIp\r\n         NtSAPLHYnaYk02BITiXYiZ7QbYN0KYSoOyxE77Z4nHkfRFUhq0YsEOLALEYCxMbxTfz/\r\n         D9dQ==",
+            "x-gm-message-state": "X-Gm-Message-State: AOJu0YwxI9OuKzKE75IDUwDN3dqMoNdYN3vICw+4ubXLP+aVYT40cD7c\r\n\tb6i6lIi6TI1YrcCHGgkpdWLmesxkL/LhQmfEDX02P45OlPJiensgWALCDN/gov5O71LoiG6uart\r\n\tAv8/6PSoHFJzMEi8US6ZGl1kXm/j5SoDuyHY+fwk=",
+            "x-gm-gg": "X-Gm-Gg: AY/fxX7cjJuySW8xIOtwPOnDbdBp16UKoCPUVBGRcgvTDHiARkkFGDObhwXd23Mgt6n\r\n\t/OcZWz/LSqgBPqaAZpRdwX8TjwsGQyvrq6RpOMcStxA+gGKPpl6X9JiJScErExFrojuX4eVnQZH\r\n\tagGjylLOqzlaB9vlT7emkSs4NINysX2DEB9nvGTEsHStg/77oq5lmODSTO7rFGZlErHmPJAl1+F\r\n\tKrDLs20D7b3tcNtGpRlWdI11z0zCdo1ehDXybiWL1wBBs95CJwVnX69vZ42oLTmYkWWaVOP3oDK\r\n\tQO3ptg==",
+            "x-google-smtp-source": "X-Google-Smtp-Source: AGHT+IFBXhxbKvVV9G4PoZfwDPWFXj1R4QtVhFf6heFCpBpA8zAXfxVAsmrYVE11JD2T8isy0Y6v5ZNMwhoZc3WZkC8=",
+            "mime-version": "MIME-Version: 1.0",
+            "from": "From: Furqan ahmad basra <furqanacc5785@gmail.com>",
+            "date": "Date: Sat, 13 Dec 2025 12:24:59 +0500",
+            "x-gm-features": "X-Gm-Features: AQt7F2qK4C7BtTwNQ73EWmFrVXAoNY6HXtdy4KSziuEpJexJhlGVg_TuHlgn2hk",
+            "message-id": "Message-ID: <CADuChZUsMke8KYLxqhbHtLCFg8O3h=G3K429NsZWzaW5QGF1cA@mail.gmail.com>",
+            "subject": "Subject: sarah",
+            "to": "To: furqanahmadbasra65@gmail.com",
+            "content-type": "Content-Type: multipart/alternative; boundary=\"0000000000003411b00645d0475a\""
+          },
+          "html": "<div dir=\"ltr\"><p>Hi TechForge Team,</p><p>I found your agency on LinkedIn and I’m looking for a technical partner to build a new platform for my real estate brokerage.</p><p>We need a custom web dashboard where our agents can log in, upload property photos, and manage client leads. We do <b>not</b> want to use WordPress; we need a custom React application that can scale.</p><p>Two specific questions before we book a call:</p><ol start=\"1\"><li><p>Do you work on a fixed-price basis? We have a strict budget of $25,000 for the MVP.</p></li><li><p>Once the project is done and I pay the final invoice, do I own the code, or do I have to pay you a monthly license fee to keep using it?</p></li></ol><p>Thanks,\nSarah</p></div>\n",
+          "text": "Hi TechForge Team,\n\nI found your agency on LinkedIn and I’m looking for a technical partner to\nbuild a new platform for my real estate brokerage.\n\nWe need a custom web dashboard where our agents can log in, upload property\nphotos, and manage client leads. We do *not* want to use WordPress; we need\na custom React application that can scale.\n\nTwo specific questions before we book a call:\n\n   1.\n\n   Do you work on a fixed-price basis? We have a strict budget of $25,000\n   for the MVP.\n   2.\n\n   Once the project is done and I pay the final invoice, do I own the code,\n   or do I have to pay you a monthly license fee to keep using it?\n\nThanks, Sarah\n",
+          "textAsHtml": "<p>Hi TechForge Team,</p><p>I found your agency on LinkedIn and I&rsquo;m looking for a technical partner to<br/>build a new platform for my real estate brokerage.</p><p>We need a custom web dashboard where our agents can log in, upload property<br/>photos, and manage client leads. We do *not* want to use WordPress; we need<br/>a custom React application that can scale.</p><p>Two specific questions before we book a call:</p><p>   1.</p><p>   Do you work on a fixed-price basis? We have a strict budget of $25,000<br/>   for the MVP.<br/>   2.</p><p>   Once the project is done and I pay the final invoice, do I own the code,<br/>   or do I have to pay you a monthly license fee to keep using it?</p><p>Thanks, Sarah</p>",
+          "subject": "sarah",
+          "date": "2025-12-13T07:24:59.000Z",
+          "to": {
+            "value": [
+              {
+                "address": "furqanahmadbasra65@gmail.com",
+                "name": ""
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><a href=\"mailto:furqanahmadbasra65@gmail.com\" class=\"mp_address_email\">furqanahmadbasra65@gmail.com</a></span>",
+            "text": "furqanahmadbasra65@gmail.com"
+          },
+          "from": {
+            "value": [
+              {
+                "address": "furqanacc5785@gmail.com",
+                "name": "Furqan ahmad basra"
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Furqan ahmad basra</span> &lt;<a href=\"mailto:furqanacc5785@gmail.com\" class=\"mp_address_email\">furqanacc5785@gmail.com</a>&gt;</span>",
+            "text": "\"Furqan ahmad basra\" <furqanacc5785@gmail.com>"
+          },
+          "messageId": "<CADuChZUsMke8KYLxqhbHtLCFg8O3h=G3K429NsZWzaW5QGF1cA@mail.gmail.com>"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "selecting parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "selecting parameters": {
+      "main": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Find documents",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply to a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "customer_data_store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "customer_data_store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_email_ans": {
+      "main": [
+        [
+          {
+            "node": "Insert documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find documents": {
+      "main": [
+        [
+          {
+            "node": "customer history chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "set_email_ans",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "customer history chat": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent2": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent3": {
+      "main": [
+        [
+          {
+            "node": "orignal_email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "orignal_email": {
+      "main": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "customer_data_store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "customer_data_store1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e02b3db1-2aad-41c9-8d03-a3b9b89c3ed8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c65341c1d0ba4b77842515f852444dcd38397389a3e804334caa39fb7e97dbdf"
+  },
+  "id": "d5X9OQRAGzoSM6tU",
+  "tags": []
+}

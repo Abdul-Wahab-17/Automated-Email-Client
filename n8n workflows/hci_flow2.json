@@ -1,0 +1,122 @@
+{
+  "name": "hci_flow2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "=send-email",
+        "responseMode": "lastNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f82dd9b9-c76e-4a18-a427-a1e342a36161",
+      "name": "Webhook",
+      "webhookId": "60f714ac-c553-45cd-ad61-3ff9f51f1537"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c35040a8-09d1-44cc-833b-ba11d4acc317",
+              "name": "body.llm_reply",
+              "value": "={{ $json.body.llm_reply }}",
+              "type": "string"
+            },
+            {
+              "id": "e6fc2ec9-aaa9-4d6b-ae10-bb635575d77d",
+              "name": "body.thread_ID",
+              "value": "={{ $json.body.thread_ID }}",
+              "type": "string"
+            },
+            {
+              "id": "21afec39-59e5-4f1c-92dd-23271efbc0bf",
+              "name": "body.client_email",
+              "value": "={{ $json.body.client_email }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "addc7060-8cd4-43bc-9fc1-97e3b62ff9c0",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $json.body.thread_ID }}",
+        "emailType": "text",
+        "message": "={{ $json.body.llm_reply }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "2d97a3c1-744b-4b70-9ad8-ccecf7da5c2e",
+      "name": "Reply to a message",
+      "webhookId": "3c3549d6-4f04-411d-867c-a9fe40cd8ba4",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bKssTlwRpduDxZHG",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "errorWorkflow": "641jP7qXPmh4f1aM"
+  },
+  "versionId": "a3bc3d09-d6dc-4486-a66b-1dceb3c6c65a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c65341c1d0ba4b77842515f852444dcd38397389a3e804334caa39fb7e97dbdf"
+  },
+  "id": "641jP7qXPmh4f1aM",
+  "tags": []
+}

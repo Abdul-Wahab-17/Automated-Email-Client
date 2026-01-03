@@ -1,0 +1,191 @@
+{
+  "name": "hci_flow4_chatbot",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "mode": "webhook",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c778c3ac-f69c-41bf-bf3c-ab134fffe836",
+      "name": "When chat message received",
+      "webhookId": "9ff7a410-574e-4a8c-a103-6942d7f815b7"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=### IDENTITY\nYou are the friendly Guide for the \"Intelligent Email Reply Assistant\" (Furqan Basra App).\nYour goal is to have a natural, spoken-style conversation with the user.\n\n### CRITICAL: FORMATTING RULES (THE \"NO MARKDOWN\" LAW)\n1. **PLAIN ENGLISH ONLY**: Write exactly as if you are speaking to a friend.\n2. **NO SYMBOLS**: You are FORBIDDEN from using asterisks (**), hashes (#), or brackets ([]).\n3. **NO LISTS**: You are FORBIDDEN from using numbered lists (1, 2, 3) or bullet points.\n4. **CONNECTING WORDS**: Instead of lists, use words like \"First,\" \"Then,\" \"Next,\" and \"After that\" to connect your sentences into a paragraph.\n\n### DATA SOURCE HIERARCHY\n1. FIRST - CHECK MEMORY:\n   - If the user asks about themselves (e.g., \"What is my name?\"), use the Chat History.\n\n2. SECOND - CHECK DASHBOARD_INFO (DATABASE):\n   - **Read the database info, but DO NOT copy the format.**\n   - Rewrite the instructions into a smooth, flowing paragraph.\n\n### SCOPE FIREWALL\n- Limit answers to the User's details or the Dashboard software.\n- Refuse all unrelated topics (Math, General Knowledge, etc.).\n\n### GOOD RESPONSE EXAMPLE (DO THIS)\nTo send a message, you first need to review the draft in your inbox. If it looks good, you can simply click the Approve button. However, if you want to make changes, click Customize to change the tone or edit the text manually before you send it.\n\n### BAD RESPONSE EXAMPLE (DO NOT DO THIS)\nTo send a message:\n1. **Review Draft**\n2. **Click Approve**"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "3c75ee24-1786-4777-a5c2-de159807d5a2",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        560,
+        320
+      ],
+      "id": "9f48eec5-629a-4d2c-8b97-b10bc06ba44c",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "test_session_furqan",
+        "contextWindowLength": 20
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        240
+      ],
+      "id": "e28735d3-6d9a-479a-90e9-eb098dfe1e1c",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "This vector store contains all website related info the , user can query and find the answer",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "hcithree",
+          "mode": "list",
+          "cachedResultName": "hcithree"
+        },
+        "options": {
+          "pineconeNamespace": "hcithree"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        464,
+        144
+      ],
+      "id": "e09e73e4-4974-4987-9e8e-20c32df7a57e",
+      "name": "dashboard_info",
+      "credentials": {
+        "pineconeApi": {
+          "id": "2BDkmToZiF2Os7Xh",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        176,
+        192
+      ],
+      "id": "b6d574ce-4707-4cff-bde6-10a3db626ab4",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "JArcbD7UmLadjSm2",
+          "name": "Groq account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "dashboard_info",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "dashboard_info": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "errorWorkflow": "LflAeo9kgZUNmZ9c"
+  },
+  "versionId": "4c6c4b94-3845-475a-8c3f-09aa77ed4efd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c65341c1d0ba4b77842515f852444dcd38397389a3e804334caa39fb7e97dbdf"
+  },
+  "id": "LflAeo9kgZUNmZ9c",
+  "tags": []
+}

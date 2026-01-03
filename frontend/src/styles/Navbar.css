@@ -1,0 +1,304 @@
+.navbar {
+  position: sticky;
+  top: 0;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid #e5e7eb;
+  z-index: 1000;
+  padding: 1rem 0;
+}
+
+.navbar-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logo-icon {
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 6px rgba(79, 70, 229, 0.3));
+  transition: transform 0.2s ease;
+}
+
+.logo-icon:hover {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 4px 8px rgba(79, 70, 229, 0.4));
+}
+
+.navbar-logo h1 {
+  color: #111827;
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.logo-gradient {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Inbox Info Section */
+.navbar-inbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-inbox svg {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.inbox-info {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.inbox-label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.inbox-count {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #64748b;
+  transition: all 0.3s ease;
+}
+
+/* Glowing Animation for Inbox Count Update */
+.inbox-count-glow {
+  color: #ea580c;
+  font-weight: 600;
+  animation: inbox-glow 1.5s ease-out;
+}
+
+@keyframes inbox-glow {
+  0% {
+    text-shadow: 0 0 5px rgba(249, 115, 22, 0.8), 0 0 10px rgba(249, 115, 22, 0.6), 0 0 20px rgba(249, 115, 22, 0.4);
+    transform: scale(1.1);
+  }
+
+  50% {
+    text-shadow: 0 0 10px rgba(249, 115, 22, 0.6), 0 0 20px rgba(249, 115, 22, 0.4), 0 0 30px rgba(249, 115, 22, 0.2);
+    transform: scale(1.05);
+  }
+
+  100% {
+    text-shadow: none;
+    transform: scale(1);
+  }
+}
+
+/* Navbar Layout Actions */
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+/* Auto-Send Toggle */
+.auto-send-toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.auto-send-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  transition: color 0.3s ease;
+}
+
+.auto-send-label.active {
+  color: #4f46e5;
+}
+
+.toggle-switch {
+  width: 44px;
+  height: 24px;
+  background-color: #cbd5e1;
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.toggle-switch.active {
+  background-color: #4f46e5;
+}
+
+.toggle-handle {
+  width: 20px;
+  height: 20px;
+  background-color: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-switch.active .toggle-handle {
+  transform: translateX(20px);
+}
+
+/* Confirmation Modal in Navbar */
+.navbar-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  /* Slightly darker for better focus */
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  /* Ensure on top of everything */
+  animation: fadeIn 0.2s ease-out;
+}
+
+.navbar-modal-content {
+  background: white;
+  padding: 2.5rem 2rem;
+  border-radius: 16px;
+  /* Smooth corners */
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 440px;
+  width: 90%;
+  text-align: center;
+  position: relative;
+  animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.navbar-modal-content h3 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  color: #0f172a;
+}
+
+.navbar-modal-content p {
+  margin: 0 0 1.5rem;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.navbar-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.navbar-btn-cancel,
+.navbar-btn-confirm {
+  padding: 0.625rem 1.25rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.navbar-btn-cancel {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.navbar-btn-cancel:hover {
+  background: #e2e8f0;
+}
+
+.navbar-btn-confirm {
+  background: #ef4444;
+  /* Red for Danger/Warning */
+  color: white;
+}
+
+.navbar-btn-confirm:hover {
+  background: #dc2626;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar-container {
+    padding: 0 1rem;
+  }
+
+  /* Hide labels on mobile to save space */
+  .auto-send-label {
+    display: none;
+  }
+
+
+  .navbar-logo h1 {
+    font-size: 1.25rem;
+  }
+
+  .logo-icon {
+    font-size: 1.5rem;
+  }
+
+  .user-name {
+    display: none;
+  }
+
+  .inbox-label {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-logo h1 {
+    font-size: 1.125rem;
+  }
+
+  .navbar {
+    padding: 0.875rem 0;
+  }
+
+  .inbox-count {
+    font-size: 0.8125rem;
+  }
+}

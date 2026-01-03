@@ -1,0 +1,26 @@
+Regenerate a customer-ready email reply using the information below.
+
+### Original Customer Email (context only)
+{{ $json.orignal_email }}
+
+### Approved Base Reply (this reply is correct and must be preserved in meaning)
+{{ $json.llm_reply }}
+
+### Requested Improvements (if empty, make only light wording improvements)
+{{ $json.improvement_text }}
+
+### Desired Tone
+{{ $json.tone }}
+("No Change" = keep the same tone)
+
+### Desired Length
+{{ $json.length }}
+("No Change" = keep the same length)
+
+Instructions:
+- Always produce a rewritten customer email.
+- Never ask questions or explain missing data.
+- Do NOT change the meaning, decision, or commitments of the base reply.
+- Apply feedback only to wording, structure, tone, or length.
+- If tone or length is "No Change", preserve them.
+- The output must be suitable to send directly to a real customer.

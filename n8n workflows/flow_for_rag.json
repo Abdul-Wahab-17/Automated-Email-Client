@@ -1,0 +1,1003 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "264f83cf-ec87-4462-aeea-4052b9ed3fdc",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bKssTlwRpduDxZHG",
+          "name": "Gmail account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "44da0e3d-01ec-4c7d-a989-c79cc166831d",
+              "name": "emailBody",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "44cb6888-b8c0-49c8-8c49-dee80c8d1800",
+              "name": "threadID",
+              "value": "={{ $json.threadId }}",
+              "type": "string"
+            },
+            {
+              "id": "aac50049-cbde-42e5-aeee-ef4590053f82",
+              "name": "from ",
+              "value": "={{ $json.headers.from.extractEmail() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "bc4f4ce8-61ce-440f-81a4-9f45aec45bf4",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=here is the incoming email :  {{ $json.emailBody }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {
+          "systemMessage": "Prompt:\nAnalyze the content of the following email and determine whether it is related to customer support. If the email pertains to any of the following topics, set customerSupport to 1; otherwise, set it to 0.\n\nCustomer Support Topics Include:\n- Questions about order status, tracking, or changes\n- Issues with damaged or defective products\n- Refund or return requests\n- Subscription cancellations or adjustments\n- Technical issues with products, website, or app\n- Payment or billing inquiries\n- Requests for speaking with a support representative\n\nOutput:\nProvide the result in JSON format with a single field named \"customerSupport\" set to 1 or 0. Your response must ONLY contain valid JSON with no extra text or fields.\n\nExample Output:\n{\n  \"customerSupport\": 0\n}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "7a7b467a-bcd7-4e55-ad35-2bc0339994d5",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "aa62cc18-20ad-47a8-8df7-eaf5273ee2b2",
+              "leftValue": "={{ $json.customerSupport }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "5d2de6a6-c3ab-40f0-8bd8-c66f21df55a4",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over all input items\nfor (const item of $input.all()) {\n  // Get the text from the first part\n  const text = item.json.content.parts[0].text;\n\n  // Parse JSON safely\n  let customerSupport = 0;\n  try {\n    const parsed = JSON.parse(text);\n    // Convert value to integer 1 or 0\n    customerSupport = parsed.customerSupport ? 1 : 0;\n  } catch (e) {\n    customerSupport = 0; // fallback if parsing fails\n  }\n\n  // Overwrite the field or create a new field\n  item.json.customerSupport = customerSupport;\n}\n\n// Return all items\nreturn $input.all();\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "a77113f4-1667-403a-a768-3b50f5227941",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=this is the body : {{ $('Edit Fields').item.json.emailBody }}",
+        "options": {
+          "systemMessage": "=# System Role\nYou are a highly skilled and empathetic customer support agent specializing in drafting professional and helpful responses to incoming customer emails.\n\n# Task Specification\n1. Take an incoming customer support email.\n2. Use the **\"customerSupportDocs\"** tool to look up relevant policies or FAQs to ensure accurate and policy-compliant responses.\n3. Create a draft response using the **\"createDraft\"** tool.\n4. After drafting the email, provide a concise summary of the email content.\n\nEnsure the response:\n- Directly addresses the customer's query.\n- Maintains a polite and professional tone.\n- Ends with the sign-off:\n**\"Kelly, Customer Support ABC Corp.\"**\n\n# Specifics and Context\n- You must use the **\"customerSupportDocs\"** tool before drafting to ensure the response aligns with company policies and FAQs.\n- The **\"createDraft\"** tool must be used to finalize and prepare the draft for sending.\n- The summary should briefly explain the issue addressed and the key points or resolution provided in the response.\n\n# Examples\n## Example 1\n**Incoming Email:**\n\"I ordered a product a week ago, but it still hasn't shipped. When will it arrive?\"\n\n**customerSupportDocs Search Query:**\n\"shipping timelines\"\n\n**Relevant Info Found:**\nStandard shipping takes 7-10 business days. Delays may occur during high-demand periods.\n\n**Draft Response (via createDraft):**\nDear Customer,\n\nThank you for contacting us regarding your order's shipping status. I understand you're eagerly awaiting your product.\n\nBased on our records, and as per our standard shipping policy, delivery typically takes 7-10 business days. Since you placed your order a week ago, it is currently still within the expected timeframe. Please keep in mind that occasional delays can occur, especially during high-demand periods.\n\nWe are working to process and ship your order as quickly as possible. You will receive a separate email with tracking information as soon as your product ships.\n\nThank you for your patience and understanding.\n\nSincerely,\n**\"Kelly, Customer Support ABC Corp.\"**\n\n**Summary:**\nCustomer inquired about an unshipped order placed a week ago. Response confirmed that the order is still within the 7-10 business day standard shipping timeframe and advised that a tracking number will be provided upon shipment, noting possible delays during high-demand periods."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1456,
+        -96
+      ],
+      "id": "4deefd8c-984a-4961-8610-40fbc7627ca1",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        80
+      ],
+      "id": "9f0f2903-985f-4f66-8567-3b48a53a1a1f",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 3
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        112,
+        400
+      ],
+      "id": "0aa1e7b5-2d3a-4d91-9c73-bc0047d5f150",
+      "name": "Schedule Trigger",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.0-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.0-flash"
+        },
+        "messages": {
+          "values": [
+            {}
+          ]
+        },
+        "options": {
+          "systemMessage": "just print helo"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        320,
+        400
+      ],
+      "id": "f69d59a4-e44c-4ab2-a16a-3c17ebc2dd83",
+      "name": "Message a model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "tableName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        1264,
+        608
+      ],
+      "id": "50317a34-5b67-464a-b11c-990b54a69ce5",
+      "name": "Supabase Vector Store"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        1088,
+        544
+      ],
+      "id": "2a2efcb8-4917-4711-b99b-993dbfc3e5c4",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "5OycDnaRTLwCeDjR",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "retrieve information about the customer sport and faqs",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "hciproject",
+          "mode": "list",
+          "cachedResultName": "hciproject"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        1856,
+        32
+      ],
+      "id": "e5ec56ce-102b-4247-b85e-650546044df1",
+      "name": "Pinecone Vector Store",
+      "credentials": {
+        "pineconeApi": {
+          "id": "2BDkmToZiF2Os7Xh",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "18xS4w_oeS2_XP9Zsg8pfkZCUG-RilPd4",
+          "mode": "list",
+          "cachedResultName": "hci_project",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/18xS4w_oeS2_XP9Zsg8pfkZCUG-RilPd4"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        1968,
+        304
+      ],
+      "id": "8514b0db-a773-4b58-8212-2e3635df25d8",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "rE5cCgOwWk1knkxj",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1yGzAmGfuUkm5YfZ5jA_6sNJQlVdIGyvD",
+          "mode": "list",
+          "cachedResultName": "TechForge Solutions.docx",
+          "cachedResultUrl": "https://docs.google.com/document/d/1yGzAmGfuUkm5YfZ5jA_6sNJQlVdIGyvD/edit?usp=drivesdk&ouid=106948068732476000733&rtpof=true&sd=true"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2176,
+        304
+      ],
+      "id": "34665405-6f53-4402-b103-b2829c9e37ed",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "rE5cCgOwWk1knkxj",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "hcitwo",
+          "mode": "list",
+          "cachedResultName": "hcitwo"
+        },
+        "embeddingBatchSize": 100,
+        "options": {
+          "pineconeNamespace": "hcitwo"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        2384,
+        304
+      ],
+      "id": "11dc286c-e06d-4220-8e10-3fa522fae41a",
+      "name": "Pinecone Vector Store1",
+      "credentials": {
+        "pineconeApi": {
+          "id": "2BDkmToZiF2Os7Xh",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "textSplittingMode": "custom",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        2528,
+        512
+      ],
+      "id": "96336df8-9d79-4aaf-9ec2-521a10aede66",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "chunkSize": 512,
+        "chunkOverlap": 100,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        2496,
+        672
+      ],
+      "id": "ea3ae685-2c39-4608-b8d9-2b37b358ab87",
+      "name": "Recursive Character Text Splitter"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2736,
+        304
+      ],
+      "id": "5832db00-360d-4869-9e60-ff4c9c96efeb",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2352,
+        512
+      ],
+      "id": "3534409f-a78e-429f-ab0e-90c19470a8b9",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1408,
+        352
+      ],
+      "id": "f23d04b7-2c97-4aa7-b83b-7514097268c2",
+      "name": "Embeddings OpenAI"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $fromAI(\"subject\") }}",
+        "message": "={{ $fromAI(\"emailBody\") }}",
+        "options": {
+          "threadId": "={{ $('Edit Fields').item.json.threadID }}",
+          "sendTo": "={{ $('Edit Fields').item.json['from '] }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        1728,
+        128
+      ],
+      "id": "879e13e9-e085-4c81-8589-b5e69b68f5ef",
+      "name": "Create a draft in Gmail",
+      "webhookId": "2ebf22ad-b369-4cb9-a0ce-d4dc01ad4129",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bKssTlwRpduDxZHG",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2224,
+        96
+      ],
+      "id": "402c6b99-ef21-4e4e-81b3-330e6b2a4391",
+      "name": "Embeddings Google Gemini1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "18xS4w_oeS2_XP9Zsg8pfkZCUG-RilPd4",
+          "mode": "list",
+          "cachedResultName": "hci_project",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/18xS4w_oeS2_XP9Zsg8pfkZCUG-RilPd4"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        3184,
+        320
+      ],
+      "id": "a43a2dad-142c-4945-bcbb-03459d71b911",
+      "name": "Google Drive Trigger1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "rE5cCgOwWk1knkxj",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1mf-Ja81W0hD2mVak0lGIYAeJQPY-cIDR",
+          "mode": "list",
+          "cachedResultName": "INTELLIGENT EMAIL Chatbot.docx",
+          "cachedResultUrl": "https://docs.google.com/document/d/1mf-Ja81W0hD2mVak0lGIYAeJQPY-cIDR/edit?usp=drivesdk&ouid=106948068732476000733&rtpof=true&sd=true"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3392,
+        320
+      ],
+      "id": "b48adc66-2375-419d-80b9-eb5d72135ff9",
+      "name": "Download file1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "rE5cCgOwWk1knkxj",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "hcithree",
+          "mode": "list",
+          "cachedResultName": "hcithree"
+        },
+        "embeddingBatchSize": 100,
+        "options": {
+          "pineconeNamespace": "hcithree"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        3600,
+        320
+      ],
+      "id": "98a16d30-d043-4c93-bf77-bf690a107bb2",
+      "name": "Pinecone Vector Store2",
+      "credentials": {
+        "pineconeApi": {
+          "id": "2BDkmToZiF2Os7Xh",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "textSplittingMode": "custom",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        3744,
+        528
+      ],
+      "id": "eaf2dd03-4605-4029-a29a-354c23251e5c",
+      "name": "Default Data Loader1"
+    },
+    {
+      "parameters": {
+        "chunkSize": 512,
+        "chunkOverlap": 100,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        3712,
+        688
+      ],
+      "id": "461efe2a-dbd3-4538-a8b7-7343b75fe922",
+      "name": "Recursive Character Text Splitter1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3952,
+        320
+      ],
+      "id": "283d2fcb-d07f-4c9e-9ccc-2ba1b45f0e44",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        3568,
+        528
+      ],
+      "id": "16265434-effb-48ed-a997-3dd13ffe1c3a",
+      "name": "Embeddings Google Gemini2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Gmail Trigger": [
+      {
+        "json": {
+          "id": "19ab7141662efa78",
+          "threadId": "19ab7141662efa78",
+          "labelIds": [
+            "UNREAD",
+            "IMPORTANT",
+            "CATEGORY_PERSONAL",
+            "INBOX"
+          ],
+          "sizeEstimate": 5987,
+          "headers": {
+            "delivered-to": "Delivered-To: furqanahmadbasra65@gmail.com",
+            "received": "Received: from mail-sor-f41.google.com (mail-sor-f41.google.com. [209.85.220.41])\r\n        by mx.google.com with SMTPS id 41be03b00d2f7-bd7602ec07csor2955234a12.6.2025.11.24.10.15.38\r\n        for <furqanahmadbasra65@gmail.com>\r\n        (Google Transport Security);\r\n        Mon, 24 Nov 2025 10:15:38 -0800 (PST)",
+            "x-received": "X-Received: by 2002:a17:90b:3cc3:b0:32e:d600:4fdb with SMTP id\r\n 98e67ed59e1d1-34733ef71f2mr12887647a91.18.1764008137729; Mon, 24 Nov 2025\r\n 10:15:37 -0800 (PST)",
+            "arc-seal": "ARC-Seal: i=1; a=rsa-sha256; t=1764008138; cv=none;\r\n        d=google.com; s=arc-20240605;\r\n        b=JeR69VO+osTneRS6ntOhCBNN6s7CvIVDLygdC+YlnIBonDs2OQCBi+Ev+X3wF5SQr/\r\n         bHwC40F+TwYuMQDqu/GFDvoQTo2pEr3UlhEcfCjkwesWzZEkdcVAYNAPvs/tsn3fmOBb\r\n         etB4YlKzzOhqt1Sw9c3HFPv1ZT8gcoievvFjeUlRpcmE7XW7ysBoEj9pBwNE5kflmlwM\r\n         4cnUQKTRCy3LaqMwXSYFzDavEWdUTNsETJAbMh0nDCEiWvjHM8DRpP6dewqG1Pzf/t+c\r\n         iwFAN8Rc0YRfFuxuqA31TZsO1SfmEi2RAAIp3udR+5JnTyCbySC4Bi7aBu/xYRdZ30nS\r\n         tl4A==",
+            "arc-message-signature": "ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;\r\n        h=to:subject:message-id:date:from:mime-version:dkim-signature;\r\n        bh=j+G1YT7puGpAdWU5EmLnniPhTuz5oDT2SwbJcMxoUPk=;\r\n        fh=Cv2gNYC/IlTnypdtTCs2gBQ3DD6IG+F3xq1MjPrJ4sU=;\r\n        b=DSkqqtx6A7BYvW3ZIIH1x8eb56rhtyYKGn2AzeUuKT/N2Rjp1ZjHz/3dm+uyS3/oBW\r\n         cOVTu/ZiG/GjMiJwYsHC5SkWFsGzUlXaZNeA3zoQZpqJ6LzkqJlqP0CoEWAP8G77Cw7Y\r\n         rnXIKuet0/xwZ5ROzQPDjAkFQ86JlGW0qICcwINTYvLsZgz+6m1RDFmhp4ePcuSxP0oL\r\n         CQiA64Zh5zyUpoDIu7f5vegjR92SgjS2mnfvvy82gGF22HnYC1QreyC9lwOOHIqzYAuJ\r\n         ErjehY4AoJWCU2EtaQ/qF10HXeJZni8gwUX62+DILTVALSm4L4AiUqBmyOTnY9+/ADp/\r\n         6FrQ==;\r\n        dara=google.com",
+            "arc-authentication-results": "ARC-Authentication-Results: i=1; mx.google.com;\r\n       dkim=pass header.i=@gmail.com header.s=20230601 header.b=ClqLmhnl;\r\n       spf=pass (google.com: domain of furqanacc5785@gmail.com designates 209.85.220.41 as permitted sender) smtp.mailfrom=furqanacc5785@gmail.com;\r\n       dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=gmail.com;\r\n       dara=pass header.i=@gmail.com",
+            "return-path": "Return-Path: <furqanacc5785@gmail.com>",
+            "received-spf": "Received-SPF: pass (google.com: domain of furqanacc5785@gmail.com designates 209.85.220.41 as permitted sender) client-ip=209.85.220.41;",
+            "authentication-results": "Authentication-Results: mx.google.com;\r\n       dkim=pass header.i=@gmail.com header.s=20230601 header.b=ClqLmhnl;\r\n       spf=pass (google.com: domain of furqanacc5785@gmail.com designates 209.85.220.41 as permitted sender) smtp.mailfrom=furqanacc5785@gmail.com;\r\n       dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=gmail.com;\r\n       dara=pass header.i=@gmail.com",
+            "dkim-signature": "DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=gmail.com; s=20230601; t=1764008138; x=1764612938; dara=google.com;\r\n        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject\r\n         :date:message-id:reply-to;\r\n        bh=j+G1YT7puGpAdWU5EmLnniPhTuz5oDT2SwbJcMxoUPk=;\r\n        b=ClqLmhnliScC288Ry4JS3DzCT3eLdh5Gcq9cvL6FMqcd6WoNd5geB3uA8NbWSALhQ0\r\n         IJ9BXHpvJHWDhEXsH2iJ5I4f5lExCRJF9zZKVfVxC4WPRbB5GBV6gSCPQSuNTtgk++b2\r\n         OUKF/tmFMOxD1vCVvzvnfYAivL/8q815iruB8f9GNQM6nq/uvm4boE6XF4XDWyqlZmrd\r\n         cU6GPRVGg9NGh7e9FQQE8ig+umnt5340nkQki+u6XHf2SO0Atu8qZrhp709GFYHkMT7w\r\n         ySQHdZKfJboU0bimZhYDSYOsD2yQ3q/7MZkOsCZfs5HUNXyE3gX/Mh/GcJvYTVchLNWp\r\n         /gmQ==",
+            "x-google-dkim-signature": "X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=1e100.net; s=20230601; t=1764008138; x=1764612938;\r\n        h=to:subject:message-id:date:from:mime-version:x-gm-gg\r\n         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;\r\n        bh=j+G1YT7puGpAdWU5EmLnniPhTuz5oDT2SwbJcMxoUPk=;\r\n        b=Yqe6weWLYdPfd4pzLHDxlR+g+UNWRDkV9lVERLrR5jtM0aJPjJEDFQzdOvwZM8LMnb\r\n         F4RGgjtXAalW8xCxiOGScq/bz6cllNS2SIDoFxPLgDwEKxpDBTXTd+ptHpAPQUigsalN\r\n         FTIWg2fvJtHFiJfvlSwrDbToI4jVSh+//slNfLsc212LMsteOUmROPo5bMfFgKNK23/y\r\n         3RHNZUl/o0TT7Zl4tgSeTLaMh07AU8cIpA4A3g39QhYCOQjJ1fdeHonq8ojQoI+bCZcR\r\n         d4lGzhatext8riPUonRZtnp+U1NdXO6TLeKgmKuXlmcMVdND2N1vdqehqRMGfjFBAsyY\r\n         5fcg==",
+            "x-gm-message-state": "X-Gm-Message-State: AOJu0YxdW8uEwcWmiZOj2Gtna5Lgn5PxRFVuo6HVFBcuhnMJ1vH+Ppng\r\n\tVJ6lRjikVfMaMUloUYq+3DfNq3rLg73cAvxFYPr2XGYhLr57iWjF/JFmJVVXIv+RSFwY18xdIYC\r\n\tzUhGEf5AtbRSzxXYBqrDyKh2rf3OXzlPvhFxA9Uc=",
+            "x-gm-gg": "X-Gm-Gg: ASbGncvxatbsBaSevV8lYTH98JZTOlbHXPdUnvfCQ8kOMan3eUmQ4/pF/+E/0h0nMZO\r\n\tJA28evwq07KPPs16MmYixeG+4cRy6jd2jK0I7NA12sRxjyqWqxqifBhRa6JXbX2FmBDUxmIgOW3\r\n\t5c1JR7eWA7hxu4QpRKKcKT+crVHoADuCe7Dt+cxbwty22+SWxWCoqGmCvrRIyhLqK1ewl6einWi\r\n\tJ+hBwQms4vcE65viqXPxMRxBja1IKwe23qMLjzACLG0kZoCET3/iNi1jDVbLwjkV3OU5yc=",
+            "x-google-smtp-source": "X-Google-Smtp-Source: AGHT+IGTh4eOcUuPIMlHbWz2W43r33VQaJJSP7/eOnCm8WDRf9oAOnF9Rg4EjR83kRKVgCzkv4eiLjEKA4jEmTCoNm4=",
+            "mime-version": "MIME-Version: 1.0",
+            "from": "From: Furqan ahmad basra <furqanacc5785@gmail.com>",
+            "date": "Date: Mon, 24 Nov 2025 23:15:26 +0500",
+            "x-gm-features": "X-Gm-Features: AWmQ_bm8fbRXsL2S-e94zrC2Sdj9sJN3k1LOofE12ve1t-JDFyO9Gq64PEq4U_0",
+            "message-id": "Message-ID: <CADuChZUhVPr2VDSyAcY-5DswNP2iiohO0gG8iGP1E8wAD4Cz3w@mail.gmail.com>",
+            "subject": "Subject: docker baba",
+            "to": "To: furqanahmadbasra65@gmail.com",
+            "content-type": "Content-Type: multipart/alternative; boundary=\"0000000000006e2a1f06445b26cf\""
+          },
+          "html": "<div dir=\"ltr\">Hello,<br><br>I recently received my order, but one of the items was damaged. Could you please help me with a replacement or refund?<br><br>Thank you,<br>John Doe</div>\n",
+          "text": "Hello,\n\nI recently received my order, but one of the items was damaged. Could you\nplease help me with a replacement or refund?\n\nThank you,\nJohn Doe\n",
+          "textAsHtml": "<p>Hello,</p><p>I recently received my order, but one of the items was damaged. Could you<br/>please help me with a replacement or refund?</p><p>Thank you,<br/>John Doe</p>",
+          "subject": "docker baba",
+          "date": "2025-11-24T18:15:26.000Z",
+          "to": {
+            "value": [
+              {
+                "address": "furqanahmadbasra65@gmail.com",
+                "name": ""
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><a href=\"mailto:furqanahmadbasra65@gmail.com\" class=\"mp_address_email\">furqanahmadbasra65@gmail.com</a></span>",
+            "text": "furqanahmadbasra65@gmail.com"
+          },
+          "from": {
+            "value": [
+              {
+                "address": "furqanacc5785@gmail.com",
+                "name": "Furqan ahmad basra"
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Furqan ahmad basra</span> &lt;<a href=\"mailto:furqanacc5785@gmail.com\" class=\"mp_address_email\">furqanacc5785@gmail.com</a>&gt;</span>",
+            "text": "\"Furqan ahmad basra\" <furqanacc5785@gmail.com>"
+          },
+          "messageId": "<CADuChZUhVPr2VDSyAcY-5DswNP2iiohO0gG8iGP1E8wAD4Cz3w@mail.gmail.com>"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Message a model1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        []
+      ]
+    },
+    "Pinecone Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store1",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        []
+      ]
+    },
+    "Create a draft in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Download file1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file1": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader1": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store2",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter1": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader1",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini2": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store2",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9b2e5b1d-b315-43f8-b842-d78c63a696d5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c65341c1d0ba4b77842515f852444dcd38397389a3e804334caa39fb7e97dbdf"
+  },
+  "id": "rxiKwIaNZkJdGayj",
+  "tags": []
+}

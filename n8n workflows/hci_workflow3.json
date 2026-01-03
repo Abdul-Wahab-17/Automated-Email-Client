@@ -1,0 +1,630 @@
+{
+  "name": "hci_workflow3",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "regenerate",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c44a73ae-918d-40c8-ab0d-633df77f3861",
+      "name": "Webhook",
+      "webhookId": "f9a0a9c5-4703-4240-85b4-499161052453"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1f063ae5-a0ef-4a20-bbdd-415ef788e22f",
+              "name": "body.email.id",
+              "value": "={{ $json.body.email.id }}",
+              "type": "string"
+            },
+            {
+              "id": "bc5bafb5-e298-4fd0-830a-df0f4175a689",
+              "name": "body.tone",
+              "value": "={{ $json.body.tone }}",
+              "type": "string"
+            },
+            {
+              "id": "efba4de3-b92e-4f17-bd35-1f63687dadef",
+              "name": "body.improvement_text",
+              "value": "={{ $json.body.improvement_text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "11071d41-0035-420b-bdd5-6fa35de412c8",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "collection": "furqan_hci_collection",
+        "options": {},
+        "query": "={\n  \"_id\": \"{{ $json.body.email.id }}\"\n}\n"
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        0
+      ],
+      "id": "a580f84c-07f5-4493-bfd4-b7c6bc3a45bb",
+      "name": "Find documents",
+      "credentials": {
+        "mongoDb": {
+          "id": "0aZCT1HmedYBwg8s",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Rewrite the email reply based strictly on the following inputs.\n\nINPUT DATA:\n- Original Customer Email (Context only):\n{{ $json.orignal_email }}\n\n- Approved Reply (Source of Truth - Do not change facts):\n{{ $json.llm_reply }}\n\n- User-Requested Improvements:\n{{ $json.improvement_text }}\n\n- Target Tone:\n{{ $json.tone }} \n\n- Target Length:\n{{ $json.length }}\n\nINSTRUCTIONS:\n1. Read the \"Approved Reply\".\n2. Modify it to incorporate the \"User-Requested Improvements\".\n3. Adjust the \"Target Tone\" and \"Target Length\" if specified.\n4. Output the final result immediately.",
+        "options": {
+          "systemMessage": "=# Role\nYou are an expert Email Copy Editor. You are NOT a researcher.\n\n# Critical Rule (Anti-Loop Protocol)\nDo NOT use any tools, functions, or database lookups. \nThe \"Approved reply\" provided in the input is already factually verified and 100% correct. \nYour ONLY job is to rewrite the text for style, tone, and specific user improvements.\n\n# Behavior Rules\n- If Tone = \"No Change\", preserve the original tone.\n- If Length = \"No Change\", preserve the original length.\n- Apply user-requested improvements exactly as written.\n- Do NOT add new facts or policies that are not in the input.\n\n# Output Format\n- Output ONLY the final email body.\n- Do not add \"Here is the rewritten email:\" or any conversational text.\n- End exactly with:\nKelly, Customer Support ABC Corp."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        720,
+        416
+      ],
+      "id": "d0b27a7c-555f-42ad-b468-e60927e1b8d6",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        656,
+        416
+      ],
+      "id": "c32059e3-c3d3-46ed-9f28-da686a6f85e5",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "This vector store contains all company-related customer support information.  \nThe agent should query this store to find the most relevant information needed to answer the customer’s email accurately and according to company policies.\n",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "hcitwo",
+          "mode": "list",
+          "cachedResultName": "hcitwo"
+        },
+        "options": {
+          "pineconeNamespace": "hcitwo"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        1184,
+        272
+      ],
+      "id": "9da8a1db-b803-4616-8f2c-5d7708107de0",
+      "name": "customer_data_store",
+      "credentials": {
+        "pineconeApi": {
+          "id": "2BDkmToZiF2Os7Xh",
+          "name": "PineconeApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        432
+      ],
+      "id": "08b0b13a-2b76-434d-ad14-c84c4b1c6fc9",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6eb86918-1060-455c-af7d-ce37fc8d8eab",
+              "name": "llm_reply",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "74630375-77b7-4d64-81e3-4ccba1fb49c2",
+              "name": "regeneration_count",
+              "value": "={{ $json.regeneration_count }}",
+              "type": "number"
+            },
+            {
+              "id": "12187413-7e65-4164-8687-d294bfe90900",
+              "name": "_id",
+              "value": "={{ $('Edit Fields').item.json.body.email.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1632,
+        0
+      ],
+      "id": "d7969b22-5d54-4b3a-82d6-7a35a66ba408",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "collection": "furqan_hci_collection",
+        "updateKey": "=_id",
+        "fields": "=llm_reply , regeneration_count",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        1808,
+        0
+      ],
+      "id": "68b32d1c-b449-4fbc-83ea-75a349759bd9",
+      "name": "Update documents",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "0aZCT1HmedYBwg8s",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items (from previous node, e.g., \"Find documents\")\nfor (const item of $input.all()) {\n  // Increment regeneration_count by 1\n  if (item.json.regeneration_count === undefined || item.json.regeneration_count === null) {\n    item.json.regeneration_count = 1;\n  } else {\n    item.json.regeneration_count = parseInt(item.json.regeneration_count, 10) + 1;\n  }\n}\n\n// Return updated items\nreturn $input.all();\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        0
+      ],
+      "id": "729d71eb-02ab-4900-803c-bc6cc72c2112",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"llm_reply\": {{ JSON.stringify({ llm_reply: $json.llm_reply }) }} }",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2288,
+        0
+      ],
+      "id": "d3d89f03-bf92-4c36-98d3-651a85711fbd",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3a80a6a1-ac97-452f-919b-442dcfa7bbba",
+              "name": "llm_reply",
+              "value": "={{ $json.llm_reply }}",
+              "type": "string"
+            },
+            {
+              "id": "cde78200-8222-44bd-8135-b587dd78a11c",
+              "name": "regeneration_count",
+              "value": "={{ $json.regeneration_count }}",
+              "type": "number"
+            },
+            {
+              "id": "9ef99eaa-f0be-4e1f-8564-1b1da7153248",
+              "name": "_id",
+              "value": "={{ $('Find documents').item.json._id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2016,
+        0
+      ],
+      "id": "5da3d89d-a03e-43ab-b801-358a47d7b250",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "de847567-3742-4760-b7cb-3c0297a94a50",
+              "name": "llm_reply",
+              "value": "={{ $json.llm_reply }}",
+              "type": "string"
+            },
+            {
+              "id": "db7c2df3-40dc-4406-af9c-21e526ff0280",
+              "name": "orignal_email",
+              "value": "={{ $json.orignal_email }}",
+              "type": "string"
+            },
+            {
+              "id": "54e2eb29-da11-47b9-a5b3-53e75df3d1c0",
+              "name": "tone",
+              "value": "={{ $('Code in JavaScript1').item.json.body.tone }}",
+              "type": "string"
+            },
+            {
+              "id": "2ac2d19d-8607-407c-b617-2a2b8b8fea00",
+              "name": "length",
+              "value": "={{ $('Code in JavaScript1').item.json.body.length }}",
+              "type": "string"
+            },
+            {
+              "id": "882bf804-54e4-4d90-a15b-214e7cae18db",
+              "name": "improvement_text",
+              "value": "={{ $('Code in JavaScript1').item.json.body.improvement_text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        832,
+        0
+      ],
+      "id": "e2172d01-526a-48a7-bc52-08f99a9e885f",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const body = item.json.body || {};\n\n  // Read tone string\n  const toneString = body.tone || \"\";\n\n  // Split by comma\n  const [tone = \"\", length = \"\"] = toneString\n    .split(\",\")\n    .map(v => v.trim());\n\n  return {\n    json: {\n      body: {\n        ...body,\n        tone,     // first value\n        length    // second value\n      }\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "de744072-c6bb-47b8-be0a-4b9b4990624b",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Refine this email based on the parameters below.\n\n### 1. The Context (From Customer)\n{{ $json.orignal_email }}\n\n### 2. The Foundation (Base Draft)\n{{ $json.llm_reply }}\n*(Use the facts and structure from here)*\n\n### 3. The Directive (User Feedback)\n{{ $json.improvement_text }}\n*(CRITICAL: If this is not empty, merge these changes into the Foundation. If this contradicts the Foundation, the Directive wins.)*\n\n### 4. Style Constraints\n- **Tone:** {{ $json.tone }}\n- **Length:** {{ $json.length }}\n\n**Output:** Generate the final, ready-to-send email now.",
+        "options": {
+          "systemMessage": "=# System Role\nYou are an intelligent Customer Support Email Editor. Your goal is to synthesize a final email by blending a **Base Draft** with **User Feedback**.\n\n# The \"Amalgam\" Logic (Strict Priority)\n1. **Foundation:** Use the facts and context from the [Approved Base Reply].\n2. **Direction:** Apply the [Requested Improvements].\n   - If the improvements are minor (e.g., \"add a coupon\"), insert them into the Base Reply.\n   - If the improvements are major (e.g., \"change the decision to NO\"), you must **overwrite** that specific part of the Base Reply while keeping the rest of the professional structure.\n3. **Style:** STRICTLY adhere to the [Desired Tone] and [Desired Length].\n\n# Formatting Rules\n- Do NOT output explanations or conversational filler.\n- Do NOT output XML tags like <think>.\n- Output ONLY the final email body.\n- End with signature: \"furqan, Customer Support ABC Corp.\""
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "3863c1cd-ea0f-4f30-9cee-cbad7011264b",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash-lite-preview",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        752,
+        240
+      ],
+      "id": "5d54530f-acc0-4c89-afb1-2123e7911672",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VGIixzxzoPoxF1hr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        960,
+        208
+      ],
+      "id": "4a71093b-f21c-460d-a242-a852a9ec2e79",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "Bb0zytNnFpxZM8st",
+          "name": "Groq account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "localhost:5678",
+            "connection": "keep-alive",
+            "content-length": "1047",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+            "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+            "content-type": "application/json",
+            "sec-ch-ua-mobile": "?0",
+            "accept": "*/*",
+            "origin": "http://localhost:5173",
+            "sec-fetch-site": "same-site",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-dest": "empty",
+            "referer": "http://localhost:5173/",
+            "accept-encoding": "gzip, deflate, br, zstd",
+            "accept-language": "en-US,en;q=0.9"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "email": {
+              "id": "692a8a623760f3b7b3d5b56a",
+              "sender": "furqanacc5785@gmail.com",
+              "senderName": "furqanacc5785",
+              "subject": "No Subject",
+              "customerEmail": "my name is wala wala\nI recently received my order, but one of the items was damaged. Could you\nplease help me with a replacement or refund?\n\nThank you,\n",
+              "createdAT": "2025-11-29T05:53:35.863Z",
+              "customerEmailSummary": "Customer reported a damaged item and requested a replacement or refund. The available knowledge base did not contain relevant policies for damaged items. The response acknowledges the issue, apologizes, and states that the agent is investigating the policy. The customer is also asked for their order number and details/photos of the damaged item to assist with the process.",
+              "Reply_of_email": "I am sorry, but I cannot regenerate an improved email reply without the content of the **Original Customer Email** and the **Previous AI-Generated Reply**. Please provide these details so I can assist you further."
+            },
+            "tone": "No Change, No Change",
+            "improvement_text": "sign of as furqan"
+          },
+          "webhookUrl": "http://localhost:5678/webhook-test/regenerate",
+          "executionMode": "test"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find documents": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "customer_data_store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "customer_data_store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Update documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update documents": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Find documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "errorWorkflow": "7EX2Bp9FvNUZerqS"
+  },
+  "versionId": "37983634-5d97-453d-a462-b02be2030895",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c65341c1d0ba4b77842515f852444dcd38397389a3e804334caa39fb7e97dbdf"
+  },
+  "id": "7EX2Bp9FvNUZerqS",
+  "tags": []
+}
